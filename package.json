@@ -44,8 +44,8 @@
   "types": "./dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "tsup",
-    "build-with-skill": "tsup && node src-script/dist-skill.js",
+    "build": "node src-script/clean.js && tsup && node src-script/dist.js",
+    "build-with-skill": "node src-script/clean.js && tsup && node src-script/dist.js --distribute-skill",
     "dev": "tsup --watch",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier . --check",

@@ -41,4 +41,5 @@ coverage/
 .eslintcache
 
 
-dist/
+
+dist/**
