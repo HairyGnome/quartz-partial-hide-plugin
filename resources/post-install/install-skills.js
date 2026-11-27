@@ -4,11 +4,9 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Plugin installation directory: .quartz/plugins/plugin-name
 const pluginDir = path.resolve(__dirname, "..");
 
-// Quartz project root (adjust if your plugin is installed elsewhere)
-const quartzRoot = path.resolve(pluginDir, "../../..");
+const quartzRoot = process.cwd();
 
 const skillName = "partial-hide-plugin";
 
