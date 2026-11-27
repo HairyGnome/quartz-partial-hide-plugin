@@ -45,6 +45,7 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
+    "build-with-skill": "tsup && node src-script/dist-skill.js",
     "dev": "tsup --watch",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier . --check",
