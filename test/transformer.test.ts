@@ -1,9 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkStringify from "remark-stringify";
-import { visit } from "unist-util-visit";
-import type { Element, ElementContent, Root } from "hast";
 import { PartialHideTransformer } from "../src/transformer";
 import { createCtx } from "./helpers";
 
