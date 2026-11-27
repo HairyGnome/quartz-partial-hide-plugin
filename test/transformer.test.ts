@@ -105,9 +105,19 @@ this is a nested directive
 
 :::
 
-:::hidden
+invisible text
 
-visible text`;
+:::
+
+visible text
+
+:::some-other-directive
+
+also visible text
+
+:::
+
+`;
 
     const ctx = createCtx();
     const transformer = PartialHideTransformer(ctx);
@@ -117,9 +127,27 @@ visible text`;
     expect(String(file)).not.toContain("Some text");
     expect(String(file)).not.toContain("const x = 1;");
     expect(String(file)).not.toContain(":::directive");
+    expect(String(file)).not.toContain(`:::hidden
+Some text 
+
+\`\`\`ts
+const x = 1;
+\`\`\`
+
+:::directive
+
+this is a nested directive
+
+:::
+
+invisible text
+
+:::`);
     expect(String(file)).not.toContain("this is a nested directive");
-    expect(String(file)).not.toContain(":::");
+    expect(String(file)).not.toContain("invisible text");
     expect(String(file)).toContain("# Heading");
     expect(String(file)).toContain("visible text");
+    expect(String(file)).toContain("also visible text");
+    expect(String(file)).toContain(":::some-other-directive");
   });
 });
