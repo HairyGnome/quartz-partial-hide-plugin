@@ -12,6 +12,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +35,7 @@ jobs:
   build:
     needs: [test]
     runs-on: ubuntu-latest
+
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -57,15 +59,25 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Upload build artifacts
+      - name: Prepare plugin package
+        run: |
+          set -e
+          test -d dist
+          mkdir -p release-package
+          cp package.json release-package/
+          cp -a dist release-package/dist
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist
+          name: plugin-normal
+          path: release-package/
+          if-no-files-found: error
 
   build-with-skill:
     needs: [test]
     runs-on: ubuntu-latest
+
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -89,11 +101,20 @@ jobs:
       - name: Build project with agent skill
         run: npm run build-with-skill
 
-      - name: Upload build artifacts
+      - name: Prepare AI plugin package
+        run: |
+          set -e
+          test -d dist-ai
+          mkdir -p release-package
+          cp package.json release-package/
+          cp -a dist-ai release-package/dist
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist-ai
-          path: dist-ai
+          name: plugin-ai
+          path: release-package/
+          if-no-files-found: error
 
   release:
     needs: [build]
@@ -101,28 +122,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download dist
+      - name: Download plugin package
         uses: actions/download-artifact@v4
         with:
-          name: dist
-          path: dist
+          name: plugin-normal
+          path: release-package
 
-      - name: Prepare release branch
+      - name: Publish normal release
         env:
           VERSION: ${{ needs.build.outputs.version }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
 
+          TAG="v$VERSION"
+
           if [ -z "$VERSION" ]; then
             echo "ERROR: Version is empty!"
             exit 1
           fi
 
-          TAG="v$VERSION"
-
-          mkdir -p /tmp/release
-          cp -a dist/. /tmp/release/
+          cd release-package
 
           git init -b release
           git config user.name "github-actions[bot]"
@@ -131,11 +151,9 @@ jobs:
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "ERROR: Version $TAG already exists!"
+            echo "ERROR: Tag $TAG already exists!"
             exit 1
           fi
-
-          cp -a /tmp/release/. .
 
           git add -A
           git commit -m "Release $TAG"
@@ -144,15 +162,6 @@ jobs:
 
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
-
-      - name: Create GitHub Release
-        env:
-          VERSION: ${{ needs.build.outputs.version }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "v$VERSION" \
-            --title "v$VERSION" \
-            --generate-notes
 
   release-with-skill:
     needs: [build-with-skill, release]
@@ -160,28 +169,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download dist-ai
+      - name: Download AI plugin package
         uses: actions/download-artifact@v4
         with:
-          name: dist-ai
-          path: dist-ai
+          name: plugin-ai
+          path: release-package
 
-      - name: Prepare release branch
+      - name: Publish AI release
         env:
           VERSION: ${{ needs.build-with-skill.outputs.version }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
 
+          TAG="v$VERSION-ai"
+
           if [ -z "$VERSION" ]; then
             echo "ERROR: Version is empty!"
             exit 1
           fi
 
-          TAG="v$VERSION-ai"
-
-          mkdir -p /tmp/release
-          cp -a dist-ai/. /tmp/release/
+          cd release-package
 
           git init -b release
           git config user.name "github-actions[bot]"
@@ -190,11 +198,9 @@ jobs:
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "ERROR: Version $TAG already exists!"
+            echo "ERROR: Tag $TAG already exists!"
             exit 1
           fi
-
-          cp -a /tmp/release/. .
 
           git add -A
           git commit -m "Release $TAG"
@@ -203,12 +209,3 @@ jobs:
 
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
-
-      - name: Create GitHub Release
-        env:
-          VERSION: ${{ needs.build-with-skill.outputs.version }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "v$VERSION-ai" \
-            --title "v$VERSION AI" \
-            --generate-notes
