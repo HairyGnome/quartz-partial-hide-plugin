@@ -37,7 +37,7 @@ jobs:
       - name: Build project
         run: npm run build
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
@@ -55,7 +55,7 @@ jobs:
       - name: Build project with agent skill
         run: npm run build-with-skill
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist-ai
           path: dist-ai
