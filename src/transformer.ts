@@ -1,7 +1,6 @@
 import type { QuartzTransformerPlugin, BuildCtx } from "@quartz-community/types";
 import type { PartialHideTransformerOptions } from "./types";
 
-const defaultOptions: PartialHideTransformerOptions = {};
 const removeRegex = /:::hidden[\s\S]*?:::/g;
 
 /**
@@ -9,8 +8,7 @@ const removeRegex = /:::hidden[\s\S]*?:::/g;
  */
 export const PartialHideTransformer: QuartzTransformerPlugin<
   Partial<PartialHideTransformerOptions>
-> = (userOptions?: Partial<PartialHideTransformerOptions>) => {
-  const options = { ...defaultOptions, ...userOptions };
+> = () => {
   return {
     name: "PartialHideTransformer",
     textTransform(_ctx: BuildCtx, src: string) {
