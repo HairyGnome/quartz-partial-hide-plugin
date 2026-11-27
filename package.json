@@ -1,6 +1,6 @@
 {
   "name": "quartz-partial-hide-plugin",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A plugin that allows creators using Quartz to hide parts of pages, so that hey can write pages, and only reveal parts to the public when needed.",
   "type": "module",
   "license": "MIT",
