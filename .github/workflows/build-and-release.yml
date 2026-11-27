@@ -104,10 +104,10 @@ jobs:
       - name: Prepare AI plugin package
         run: |
           set -e
-          test -d dist-ai
+          test -d dist
           mkdir -p release-package
           cp package.json release-package/
-          cp -a dist-ai release-package/dist
+          cp -a dist release-package/dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
