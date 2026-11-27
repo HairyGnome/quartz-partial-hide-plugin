@@ -46,26 +46,20 @@ function cleanUpDist(args) {
   console.log("Removed empty folders from dist");
 }
 
-function moveDistFiles(args) {
-  fs.mkdirSync(`dist/${pluginName}`, { recursive: true });
-  const fixedDistPath = `dist/${pluginName}`;
-  for (const file of fs.readdirSync("dist")) {
-    if (file !== pluginName) fs.renameSync(`dist/${file}`, `${fixedDistPath}/${file}`);
-  }
-  console.log(`Moved dist files to ${fixedDistPath}`);
-}
-
 function distributeSkill(args) {
   if (!args.distSkill) return;
   fs.mkdirSync(`dist/skills/${pluginName}`, { recursive: true });
   fs.copyFileSync(sourcePath, skillDistPath);
   console.log(`Copied SKILL.md to ${skillDistPath}`);
+
+  fs.mkdirSync(`dist/scripts`, { recursive: true });
+  fs.copyFileSync(`resources/post-install/install-skills.js`, `dist/scripts/install-skills.js`);
+  console.log("Copied install-skills.js to dist/scripts/install-skills.js");
 }
 
 function main() {
   const args = pargeArgs(process.argv.slice(2));
   cleanUpDist(args);
-  moveDistFiles(args);
   distributeSkill(args);
 }
 
