@@ -36,6 +36,11 @@ jobs:
         run: npm ci
       - name: Build project
         run: npm run build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
 
   build-with-skill:
     needs: [test]
@@ -49,3 +54,107 @@ jobs:
         run: npm ci
       - name: Build project with agent skill
         run: npm run build-with-skill
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-ai
+          path: dist-ai
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Prepare release branch
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="v$VERSION"
+          # Fail if this version has already been released
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG"; then
+            echo "Version $TAG already exists!"
+            exit 1
+          fi
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout --orphan release
+          git add dist
+          git commit -m "Release $TAG"
+          git rm -r --cached dist
+          mkdir -p /tmp/release
+          cp -a dist/. /tmp/release/
+          git rm -rf dist
+          cp -a /tmp/release/. .
+          git add -A
+          git commit --amend --no-edit
+          git push origin HEAD:refs/heads/release --force
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes
+
+  release-with-skill:
+    runs-on: ubuntu-latest
+    needs: build-with-skill
+
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-ai
+          path: dist-ai/
+
+      - name: Prepare release branch
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="v$VERSION"-ai
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG"; then
+            echo "Version $TAG already exists!"
+            exit 1
+          fi
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout --orphan release
+          git add dist-ai
+          git commit -m "Release $TAG"
+          git rm -r --cached dist-ai
+          mkdir -p /tmp/release
+          cp -a dist-ai/. /tmp/release/
+          git rm -rf dist-ai
+          cp -a /tmp/release/. .
+          git add -A
+          git commit --amend --no-edit
+          git push origin HEAD:refs/heads/release --force
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes
