@@ -6,9 +6,6 @@ name: Build and Release
   push:
     branches: [prod]
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -37,12 +34,6 @@ jobs:
           node-version: 26
       - name: Install dependencies
         run: npm ci
-      - name: Read version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
       - name: Build project
         run: npm run build
       - name: Upload build artifacts
@@ -61,143 +52,109 @@ jobs:
           node-version: 26
       - name: Install dependencies
         run: npm ci
-      - name: Read version
-        id: version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected version: $VERSION"
-      - name: Build project
-        run: npm run build
+      - name: Build project with agent skill
+        run: npm run build-with-skill
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist-ai
-          path: dist
+          path: dist-ai
 
   release:
-  runs-on: ubuntu-latest
-  needs: build
-  env:
-    VERSION: ${{ needs.build.outputs.version }}
-    GH_TOKEN: ${{ github.token }}
-  steps:
-    - name: Download dist
-      uses: actions/download-artifact@v4
-      with:
-        name: plugin-dist
-        path: dist/
+    runs-on: ubuntu-latest
+    needs: build
 
-    - name: Publish compiled plugin
-      shell: bash
-      run: |
-        set -e
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
-        # Validate version
-        if [ -z "$VERSION" ]; then
-          echo "ERROR: Version is empty!"
-          exit 1
-        fi
+      - name: Prepare release branch
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="v$VERSION"
+          # Fail if this version has already been released
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG"; then
+            echo "Version $TAG already exists!"
+            exit 1
+          fi
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout --orphan release
+          git add dist
+          git commit -m "Release $TAG"
+          git rm -r --cached dist
+          mkdir -p /tmp/release
+          cp -a dist/. /tmp/release/
+          git rm -rf dist
+          cp -a /tmp/release/. .
+          git add -A
+          git commit --amend --no-edit
+          git push origin HEAD:refs/heads/release --force
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
-        TAG="v$VERSION"
-        echo "Publishing $TAG"
-
-        # Preserve build output outside the Git repository
-        mkdir -p /tmp/plugin-release
-        cp -a dist/. /tmp/plugin-release/
-
-        # Initialize clean repository
-        git init -b release
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-        git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-
-        # Check whether this version already exists
-        EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$TAG")
-
-        if [ -n "$EXISTING_TAG" ]; then
-          echo "ERROR: $TAG already exists!"
-          exit 1
-        fi
-
-        # Put compiled files directly in repository root
-        cp -a /tmp/plugin-release/. .
-
-        git add -A
-        git commit -m "Release $TAG"
-
-        # Update compiled branch
-        git push origin HEAD:refs/heads/release --force
-
-        # Create immutable version tag
-        git tag -a "$TAG" -m "Release $TAG"
-        git push origin "$TAG"
-
-    - name: Create GitHub Release
-      run: |
-        gh release create "v$VERSION" \
-          --title "v$VERSION" \
-          --generate-notes
+      - name: Create GitHub Release
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes
 
   release-with-skill:
-  runs-on: ubuntu-latest
-  needs: build-with-skill
+    runs-on: ubuntu-latest
+    needs: build-with-skill
 
-  permissions:
-    contents: write
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-ai
+          path: dist-ai/
 
-  steps:
-    - name: Download AI build
-      uses: actions/download-artifact@v4
-      with:
-        name: dist-ai
-        path: dist/
+      - name: Prepare release branch
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="v$VERSION"-ai
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG"; then
+            echo "Version $TAG already exists!"
+            exit 1
+          fi
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout --orphan release
+          git add dist-ai
+          git commit -m "Release $TAG"
+          git rm -r --cached dist-ai
+          mkdir -p /tmp/release
+          cp -a dist-ai/. /tmp/release/
+          git rm -rf dist-ai
+          cp -a /tmp/release/. .
+          git add -A
+          git commit --amend --no-edit
+          git push origin HEAD:refs/heads/release --force
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
-    - name: Publish AI build
-      shell: bash
-      env:
-        VERSION: ${{ needs.build-with-skill.outputs.version }}
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        set -e
-
-        if [ -z "$VERSION" ]; then
-          echo "ERROR: Version is empty!"
-          exit 1
-        fi
-
-        TAG="v$VERSION-ai"
-
-        mkdir -p /tmp/plugin-release
-        cp -a dist/. /tmp/plugin-release/
-
-        git init -b release
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-        git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-
-        EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/$TAG")
-        if [ -n "$EXISTING_TAG" ]; then
-          echo "ERROR: $TAG already exists!"
-          exit 1
-        fi
-
-        cp -a /tmp/plugin-release/. .
-        git add -A
-        git commit -m "Release $TAG"
-
-        git push origin HEAD:refs/heads/release --force
-
-        git tag -a "$TAG" -m "Release $TAG"
-        git push origin "$TAG"
-
-    - name: Create GitHub Release
-      env:
-        VERSION: ${{ needs.build-with-skill.outputs.version }}
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        gh release create "v$VERSION-ai" \
-          --title "v$VERSION AI" \
-          --generate-notes
+      - name: Create GitHub Release
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes
