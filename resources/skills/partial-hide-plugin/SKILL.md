@@ -1,5 +1,5 @@
 ---
-name: partial-hide-skill
+name: partial-hide-plugin
 description: Use when someone wants to omit part of a Quartz page from the generated site at build time using the partial-hide plugin's :::hidden directive.
 ---
 
