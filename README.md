@@ -25,7 +25,7 @@ Add `-ai` to the end of the ref if you also want to install the agent-skill for 
 
 2. Run `npx quartz plugin resolve`
 
-3. If you donwloaded the agent skill, you can install it by running the `node quartz/plugins/partial-hide-plugin/scripts/install-skill.js` command. This script will install the agent skill in your workspace.
+3. If you donwloaded the agent skill, you can install it by running the `node .quartz/plugins/quartz-partial-hide-plugin/dist/scripts/install-skills.js` command. This script will install the agent skill in your workspace.
 
 ## Usage
 
